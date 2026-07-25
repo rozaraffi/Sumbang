@@ -953,6 +953,15 @@
                         </div>
                     </div>
 
+                    <!-- Input Alamat / Daerah -->
+                    <div class="form-group">
+                        <label for="alamatTamu">Alamat / Daerah *</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-location-dot input-icon"></i>
+                            <input type="text" id="alamatTamu" class="form-control" placeholder="Madiun, Magetan, dll." required>
+                        </div>
+                    </div>
+
                     <!-- Custom Dropdown: Kategori -->
                     <div class="form-group">
                         <label>Kategori *</label>
@@ -1046,7 +1055,7 @@
                         <div class="search-box">
                             <div class="input-wrapper">
                                 <i class="fa-solid fa-magnifying-glass input-icon"></i>
-                                <input type="text" id="searchInput" class="form-control" placeholder="Cari nama / detail...">
+                                <input type="text" id="searchInput" class="form-control" placeholder="Cari nama, daerah, detail...">
                             </div>
                         </div>
 
@@ -1086,6 +1095,7 @@
                                     <div class="custom-option selected" data-value="waktu-desc">Terbaru</div>
                                     <div class="custom-option" data-value="waktu-asc">Terlama</div>
                                     <div class="custom-option" data-value="nama">Nama (A-Z)</div>
+                                    <div class="custom-option" data-value="alamat">Alamat (A-Z)</div>
                                 </div>
                             </div>
                         </div>
@@ -1097,6 +1107,7 @@
                         <thead>
                             <tr>
                                 <th>Nama Tamu</th>
+                                <th>Alamat / Daerah</th>
                                 <th>Kategori</th>
                                 <th>Jenis Hadiah</th>
                                 <th>Detail / Nominal</th>
@@ -1243,6 +1254,7 @@
             e.preventDefault();
 
             const nama = document.getElementById('namaTamu').value.trim();
+            const alamat = document.getElementById('alamatTamu').value.trim();
             const kategori = getCustomSelectValue('custom-select-kategori');
             const jenisHadiah = getCustomSelectValue('custom-select-jenisHadiah');
             const totalDetail = totalDetailInput.value.trim();
@@ -1258,6 +1270,7 @@
                 const guestIndex = guests.findIndex(g => g.id === editingId);
                 if (guestIndex !== -1) {
                     guests[guestIndex].nama = nama;
+                    guests[guestIndex].alamat = alamat;
                     guests[guestIndex].kategori = kategori;
                     guests[guestIndex].jenisHadiah = jenisHadiah;
                     guests[guestIndex].totalDetail = formattedDetail;
@@ -1271,6 +1284,7 @@
                 const newGuest = {
                     id: Date.now(),
                     nama,
+                    alamat,
                     kategori,
                     jenisHadiah,
                     totalDetail: formattedDetail,
@@ -1299,6 +1313,7 @@
 
             editingId = id;
             document.getElementById('namaTamu').value = guest.nama;
+            document.getElementById('alamatTamu').value = guest.alamat || '';
             setCustomSelectValue('custom-select-kategori', guest.kategori);
             
             const currentHadiah = (guest.jenisHadiah === 'Transfer') ? 'Uang' : guest.jenisHadiah;
@@ -1342,7 +1357,10 @@
             guestTableBody.innerHTML = '';
 
             let filteredGuests = guests.filter(g => {
-                const matchesSearch = g.nama.toLowerCase().includes(filterText) || g.totalDetail.toLowerCase().includes(filterText);
+                const alamatVal = g.alamat ? g.alamat.toLowerCase() : '';
+                const matchesSearch = g.nama.toLowerCase().includes(filterText) || 
+                                      alamatVal.includes(filterText) || 
+                                      g.totalDetail.toLowerCase().includes(filterText);
                 const matchesCat = catFilter === 'Semua' || g.kategori === catFilter;
                 
                 const effectiveGiftType = (g.jenisHadiah === 'Transfer') ? 'Uang' : g.jenisHadiah;
@@ -1355,13 +1373,14 @@
                 if (sortBy === 'waktu-desc') return (b.timestamp || b.id) - (a.timestamp || a.id);
                 if (sortBy === 'waktu-asc') return (a.timestamp || a.id) - (b.timestamp || b.id);
                 if (sortBy === 'nama') return a.nama.localeCompare(b.nama);
+                if (sortBy === 'alamat') return (a.alamat || '').localeCompare(b.alamat || '');
                 return 0;
             });
 
             if (filteredGuests.length === 0) {
                 guestTableBody.innerHTML = `
                     <tr>
-                        <td colspan="6">
+                        <td colspan="7">
                             <div class="empty-state">
                                 <i class="fa-regular fa-folder-open"></i>
                                 <p>Tidak ditemukan data tamu yang cocok.</p>
@@ -1381,6 +1400,7 @@
 
                 tr.innerHTML = `
                     <td><strong style="color: #0f172a; font-weight: 600;">${escapeHtml(guest.nama)}</strong></td>
+                    <td><span style="color: var(--text-muted); font-weight: 500;"><i class="fa-solid fa-location-dot" style="font-size: 0.75rem; color: var(--text-subtle);"></i> ${escapeHtml(guest.alamat || '-')}</span></td>
                     <td><span class="badge-cat cat-${guest.kategori}">${guest.kategori}</span></td>
                     <td>
                         <span class="badge-gift">
@@ -1563,12 +1583,13 @@
             }
 
             let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Nama Tamu,Kategori,Jenis Hadiah,Detail / Nominal,Waktu Kehadiran\n";
+            csvContent += "Nama Tamu,Alamat / Daerah,Kategori,Jenis Hadiah,Detail / Nominal,Waktu Kehadiran\n";
 
             dataToExport.forEach(g => {
                 const effectiveGiftType = (g.jenisHadiah === 'Transfer') ? 'Uang' : g.jenisHadiah;
                 const row = [
                     `"${g.nama}"`,
+                    `"${g.alamat || ''}"`,
                     `"${g.kategori}"`,
                     `"${effectiveGiftType}"`,
                     `"${g.totalDetail.replace(/"/g, '""')}"`,
@@ -1612,6 +1633,7 @@
         }
 
         function escapeHtml(str) {
+            if (!str) return '';
             return str.replace(/[&<>'"]/g, 
                 tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
             );
